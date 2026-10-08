@@ -1,3 +1,4 @@
+import { createPhoneStore, parseAdminIdentity, PhoneAccountError, safeError } from "./phone-accounts.mjs";
 import { pathToFileURL } from "node:url";
 ﻿import http from "node:http";
 import crypto from "node:crypto";
@@ -27,7 +28,21 @@ function json(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
-export function createApp(config = loadConfig()) {
+export function createApp(config = loadConfig(), dependencies = {}) {
+  const phoneStore = dependencies.phoneStore || createPhoneStore(config.phoneAccountsFile);
+  async function callEnrollment(action,input) {
+    if(dependencies.callEnrollment)return dependencies.callEnrollment(action,input);
+    if(!config.adapterServiceKey)throw new PhoneAccountError("adapter_auth_not_configured",503);
+    const url=new URL("/internal/v1/whatsapp/enrollment/execute",config.adapterEnrollmentUrl);
+    let response;
+    try{
+      response=await fetch(url.toString(),{method:"POST",headers:{"content-type":"application/json","x-enrollment-service-key":config.adapterServiceKey},
+        body:JSON.stringify({action,input}),signal:AbortSignal.timeout(12000)});
+    }catch{throw new PhoneAccountError("enrollment_adapter_unreachable",503);}
+    let body;try{body=await response.json();}catch{throw new PhoneAccountError("enrollment_adapter_invalid",503);}
+    if(!response.ok)throw new PhoneAccountError(body?.error?.code||"enrollment_adapter_rejected",response.status);
+    return body.result;
+  }
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     try {
@@ -58,6 +73,45 @@ export function createApp(config = loadConfig()) {
         const body = await readJson(req);
         const result = validateCampaign(body);
         return json(res, result.valid ? 200 : 422, result);
+      }
+
+      const accountRoot="/internal/v1/whatsapp/phone-accounts";
+      if(url.pathname===accountRoot || url.pathname.startsWith(accountRoot+"/")) {
+        // Always authorize before parsing or revealing account existence.
+        const identity=parseAdminIdentity(req,config);
+        res.setHeader("cache-control","no-store");
+        res.setHeader("x-content-type-options","nosniff");
+        if(url.pathname===accountRoot) {
+          if(req.method==="GET")return json(res,200,{items:await phoneStore.list(identity.tenant)});
+          if(req.method==="POST") {
+            const body=await readJson(req);
+            if(body.tenant_id!==identity.tenant)throw new PhoneAccountError("tenant_mismatch",403);
+            const item=await phoneStore.create(body,identity.actor);
+            return json(res,201,item);
+          }
+          return json(res,405,{error:{code:"method_not_allowed"}});
+        }
+        const suffix=url.pathname.slice(accountRoot.length+1);
+        const parts=suffix.split("/");
+        if(!/^[0-9a-f-]{36}$/.test(parts[0]))return json(res,404,{error:{code:"not_found"}});
+        if(parts.length===1){
+          if(req.method==="GET")return json(res,200,await phoneStore.get(parts[0],identity.tenant));
+          if(req.method==="PATCH"){
+            const body=await readJson(req);
+            const expected=Number(body.expected_version);
+            if(!Number.isInteger(expected))throw new PhoneAccountError("expected_version_required",400);
+            return json(res,200,await phoneStore.update(parts[0],identity.tenant,expected,body.patch||{},identity.actor));
+          }
+          return json(res,405,{error:{code:"method_not_allowed"}});
+        }
+        if(parts.length===3&&parts[1]==="actions"&&req.method==="POST"){
+          const body=await readJson(req),v=Number(body.expected_version);
+          if(!Number.isInteger(v))throw new PhoneAccountError("expected_version_required",400);
+          const result=await phoneStore.action(parts[0],identity.tenant,v,req.headers["idempotency-key"],parts[2],
+             body.input||{},identity.actor,callEnrollment,config.phoneEnrollmentEnabled);
+          return json(res,200,result);
+        }
+        return json(res,404,{error:{code:"not_found"}});
       }
 
       if (req.method === "POST" && url.pathname === "/platform/v1/whatsapp/messages") {
@@ -109,11 +163,11 @@ export function createApp(config = loadConfig()) {
 
       return json(res, 404, { error: { code: "not_found" } });
     } catch (error) {
-      const status = error instanceof DomainError ? error.status : 500;
+      const status = error instanceof DomainError ? error.status : error instanceof PhoneAccountError ? error.status : 500;
       return json(res, status, {
         error: {
           code: error.code || "internal_error",
-          message: error.message,
+          message: error instanceof PhoneAccountError ? error.code : error.message,
           retryable: false
         }
       });

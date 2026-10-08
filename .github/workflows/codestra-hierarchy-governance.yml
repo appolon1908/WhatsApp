@@ -24,6 +24,8 @@ jobs:
           import pathlib, yaml
           data = yaml.safe_load(pathlib.Path(".codestra/control-plane.yml").read_text())
           assert data["promotion"]["chain"] == ["development","testing","staging","production"]
+          for key in ("require_exact_sha", "require_clean_worktree", "require_review"):
+              assert data["promotion"][key] is True, f"fail-closed promotion rule missing: {key}"
           assert data["promotion"]["force_push_allowed"] is False
           for key in ("production_go","live_capabilities_enabled","external_effects_enabled","whatsapp_send_enabled","provider_activation_enabled"):
               assert data["effects"][key] is False

@@ -96,7 +96,7 @@ jobs:
       - name: Upload exact-SHA evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: exact-sha-evidence-${{ github.run_id }}
+          name: exact-sha-evidence-${{ github.run_id }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/exact-sha-evidence.txt
           if-no-files-found: error
           retention-days: 14

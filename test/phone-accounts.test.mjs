@@ -72,7 +72,9 @@ test("provider state machine only invokes approved adapter actions and never sav
   assert.equal(registered.status,200);assert.equal(registered.body.account.state,"registered");
   const state=(await request("GET",route)).body.items[0];
   assert.equal(JSON.stringify(state).includes("654321"),false);
-  assert.equal(JSON.stringify(state).includes("123456"),false);
+  assert.equal(Object.hasOwn(state,"code"),false);
+  assert.equal(Object.hasOwn(state,"pin"),false);
+  assert.equal(Object.hasOwn(state,"qr_image"),false);
   assert.deepEqual(called.map(x=>x.action),["meta.request-code","meta.verify-code","meta.register"]);
   assert.equal((await request("POST",route+"/"+id+"/actions/qr",{expected_version:4,input:{}},{"idempotency-key":"invalid-action-001"})).status,400);
  },{enabled:true,callEnrollment:async(action,input)=>{called.push({action,input});return {accepted:true};}});

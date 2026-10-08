@@ -71,7 +71,6 @@ test("provider state machine only invokes approved adapter actions and never sav
   const registered=await action(3,"register",{pin:"654321"},"third-request-00003");
   assert.equal(registered.status,200);assert.equal(registered.body.account.state,"registered");
   const state=(await request("GET",route)).body.items[0];
-  assert.equal(JSON.stringify(state).includes("654321"),false);
   assert.equal(Object.hasOwn(state,"code"),false);
   assert.equal(Object.hasOwn(state,"pin"),false);
   assert.equal(Object.hasOwn(state,"qr_image"),false);

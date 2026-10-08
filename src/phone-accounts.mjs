@@ -117,6 +117,12 @@ export function createPhoneStore(filename,{now=()=>new Date().toISOString()}={})
     const payload={...input,phone_number_id:a.phone_number_id,waba_id:a.waba_id,instance_name:a.instance_name};
     // Never persist PIN, SMS/voice code, pairing secret or QR image.
     const result=await providerCall(mapped,payload);
+    if(a.provider==="meta" && result?.accepted!==true)
+      throw new PhoneAccountError("provider_did_not_confirm",502);
+    if(action==="create-instance"&&result?.created!==true)
+      throw new PhoneAccountError("instance_not_confirmed",502);
+    if(action==="qr"&&(!result?.qr_image || !String(result.qr_image).startsWith("data:image/png;base64,")))
+      throw new PhoneAccountError("qr_not_available",503);
     const next={ "request-code":"code_requested","verify-code":"verified","register":"registered","create-instance":"awaiting_qr","qr":"awaiting_qr"}[action];
     if(next)a.state=next;
     if(action==="status")a.state=result.state==="open"?"linked":result.state==="close"?"disconnected":a.state;

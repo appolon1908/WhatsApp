@@ -86,3 +86,15 @@ test("unauthenticated, cross-tenant and malformed requests fail closed",async()=
   assert.equal((await request("POST",route,{...evo,instance_name:"../admin"})).status,400);
  },{});
 });
+
+test("provider rejection cannot falsely advance a phone registration",async()=>{
+ await withApp(async({request})=>{
+  const account=await request("POST",route,meta);
+  const result=await request("POST",route+"/"+account.body.id+"/actions/request-code",
+    {expected_version:1,input:{method:"SMS",language:"en_US"}},{"idempotency-key":"negative-provider-001"});
+  assert.equal(result.status,502);
+  const after=await request("GET",route+"/"+account.body.id);
+  assert.equal(after.body.state,"draft");
+  assert.equal(after.body.version,1);
+ },{enabled:true,callEnrollment:async()=>({accepted:false})});
+});

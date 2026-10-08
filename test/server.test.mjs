@@ -526,3 +526,19 @@ test("AI draft route fails closed while feature is disabled", async () => {
     await once(server, "close");
   }
 });
+
+test("public WhatsApp health aliases stay under the authenticated API prefix", async () => {
+  await withServer({}, async (base) => {
+    const denied = await fetch(base + "/platform/v1/whatsapp/healthz");
+    assert.equal(denied.status, 401);
+
+    const headers = { "x-tenant-id": "TENANT-1", "x-actor-id": "agent-1" };
+    const health = await fetch(base + "/platform/v1/whatsapp/healthz", { headers });
+    assert.equal(health.status, 200);
+    assert.equal((await health.json()).service, "codestra-whatsapp-app");
+
+    const ready = await fetch(base + "/platform/v1/whatsapp/readyz", { headers });
+    assert.equal(ready.status, 200);
+    assert.equal((await ready.json()).business_store_ready, true);
+  });
+});

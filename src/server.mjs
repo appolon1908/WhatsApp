@@ -187,7 +187,7 @@ export function createApp(config = loadConfig(), dependencies = {}) {
         if (!body.message || typeof body.message !== "object") throw new DomainError("invalid_request", "message is required", 400);
 
         const authorization = req.headers.authorization;
-        const result = await submitMiddlewareCommand(config, body, authorization);
+        const result = await (dependencies.submitMiddlewareCommand || submitMiddlewareCommand)(config, body, authorization);
         return json(res, result.status, {
           command_authority: "middleware-v3",
           command_id: body.command_id,

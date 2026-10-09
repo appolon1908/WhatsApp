@@ -156,6 +156,17 @@ export function createApp(config = loadConfig(), dependencies = {}) {
           });
         }
 
+        // Never accept browser-supplied tenant or actor as command authority.
+        const operator=await authorizer.authorize(req);
+        if(operator.authMode!=="oidc")
+          throw new PhoneAccountError("oidc_required_for_messaging",403);
+        if(body.tenant_id && body.tenant_id!==operator.tenant)
+          throw new PhoneAccountError("tenant_mismatch",403);
+        if(body.requested_by && body.requested_by!==operator.actor)
+          throw new PhoneAccountError("actor_mismatch",403);
+        body.tenant_id=operator.tenant;
+        body.requested_by=operator.actor;
+
         const eligibility = evaluateEligibility({
           recipient: body.recipient,
           consent_status: body.consent_status,

@@ -17,8 +17,9 @@ export function maskNumber(value) {
  return value ? value.slice(0,2)+"•".repeat(Math.max(0,value.length-6))+value.slice(-4) : null;
 }
 export function sanitizeAccount(account) {
- const {number,history,last_idempotency,...safe}=account;
- return {...safe,number_masked:maskNumber(number),history_count:Array.isArray(history)?history.length:0};
+ const {number,history,last_idempotency,idempotency,pending_effect,...safe}=account;
+ return {...safe,number_masked:maskNumber(number),history_count:Array.isArray(history)?history.length:0,
+   needs_reconciliation:Boolean(pending_effect)};
 }
 function validate(input) {
  if(!input||typeof input!=="object"||Array.isArray(input))throw new PhoneAccountError("invalid_account");
@@ -99,36 +100,66 @@ export function createPhoneStore(filename,{now=()=>new Date().toISOString()}={})
    });
   },
   async action(id,tenant,version,key,action,input,actor,providerCall,enabled) {
-   // Single-process serialization prevents duplicate provider effects in a concurrent request window.
    return sequential(async()=>{
     const a=state.accounts.find(x=>x.id===id&&x.tenant_id===tenant);
     if(!a)throw new PhoneAccountError("account_not_found",404);
-    if(a.version!==version)throw new PhoneAccountError("stale_version",409);
     if(!/^[a-zA-Z0-9_.:-]{12,128}$/.test(String(key||"")))throw new PhoneAccountError("idempotency_key_required");
-    if(a.last_idempotency===key)return {account:sanitizeAccount(a),duplicate:true};
+    const fingerprint=crypto.createHash("sha256").update(tenant+":"+id+":"+key).digest("hex");
+    const known=(a.idempotency||[]).find(x=>x.fingerprint===fingerprint);
+    if(known){
+      if(known.action!==action)throw new PhoneAccountError("idempotency_action_conflict",409);
+      return {account:sanitizeAccount(a),duplicate:true};
+    }
+    if(a.version!==version)throw new PhoneAccountError("stale_version",409);
     if(a.state==="disabled")throw new PhoneAccountError("account_disabled",423);
-    const actions={
-      meta:["request-code","verify-code","register"],
-      evolution:["create-instance","qr","status"]
-    };
+    const actions={meta:["request-code","verify-code","register"],evolution:["create-instance","qr","status"]};
     if(!actions[a.provider].includes(action))throw new PhoneAccountError("invalid_provider_action");
     if(!enabled && action!=="status")throw new PhoneAccountError("phone_enrollment_disabled",423);
-    const mapped={"request-code":"meta.request-code","verify-code":"meta.verify-code","register":"meta.register","create-instance":"evolution.create","qr":"evolution.qr","status":"evolution.status"}[action];
+    // Each provider effect has a constrained lifecycle: no skipping ownership confirmation.
+    const allowed={
+      "request-code":["draft","code_requested"],
+      "verify-code":["code_requested"],
+      "register":["verified"],
+      "create-instance":["draft"],
+      "qr":["awaiting_qr"],
+      "status":["draft","awaiting_qr","linked","disconnected"]
+    };
+    if(!allowed[action].includes(a.state))throw new PhoneAccountError("invalid_account_transition",409);
+    if(a.pending_effect && action!=="status")
+      throw new PhoneAccountError("provider_reconciliation_required",423);
+    const mapped={"request-code":"meta.request-code","verify-code":"meta.verify-code","register":"meta.register",
+      "create-instance":"evolution.create","qr":"evolution.qr","status":"evolution.status"}[action];
     const payload={...input,phone_number_id:a.phone_number_id,waba_id:a.waba_id,instance_name:a.instance_name};
-    // Never persist PIN, SMS/voice code, pairing secret or QR image.
-    const result=await providerCall(mapped,payload);
-    if(a.provider==="meta" && result?.accepted!==true)
-      throw new PhoneAccountError("provider_did_not_confirm",502);
-    if(action==="create-instance"&&result?.created!==true)
-      throw new PhoneAccountError("instance_not_confirmed",502);
-    if(action==="qr"&&(!result?.qr_image || !String(result.qr_image).startsWith("data:image/png;base64,")))
-      throw new PhoneAccountError("qr_not_available",503);
-    const next={ "request-code":"code_requested","verify-code":"verified","register":"registered","create-instance":"awaiting_qr","qr":"awaiting_qr"}[action];
+    // A write-ahead marker survives crashes/timeouts: never automatically repeat an uncertain provider effect.
+    if(action!=="status"){
+      a.pending_effect={fingerprint,action,started_at:now()};
+      await persist();
+    }
+    let result;
+    try{
+      result=await providerCall(mapped,payload);
+      if(a.provider==="meta" && result?.accepted!==true)throw new PhoneAccountError("provider_did_not_confirm",502);
+      if(action==="create-instance"&&result?.created!==true)throw new PhoneAccountError("instance_not_confirmed",502);
+      if(action==="qr"&&(!result?.qr_image || !String(result.qr_image).startsWith("data:image/png;base64,")))
+        throw new PhoneAccountError("qr_not_available",503);
+    }catch{
+      // Outcome might be unknown after a successful provider-side effect.
+      // Reconciliation must happen before a new non-idempotent operation.
+      if(a.pending_effect){a.pending_effect.review_required=true;await persist();}
+      throw new PhoneAccountError("provider_reconciliation_required",503);
+    }
+    const next={"request-code":"code_requested","verify-code":"verified","register":"registered",
+      "create-instance":"awaiting_qr","qr":"awaiting_qr"}[action];
     if(next)a.state=next;
     if(action==="status")a.state=result.state==="open"?"linked":result.state==="close"?"disconnected":a.state;
-    a.last_idempotency=key;record(a,"provider_"+action,actor);await persist();
+    a.pending_effect=null;
+    a.idempotency??=[];
+    a.idempotency.push({fingerprint,action,at:now()});
+    if(a.idempotency.length>30)a.idempotency.shift();
+    record(a,"provider_"+action,actor);await persist();
     return {account:sanitizeAccount(a),result,duplicate:false};
    });
+
   }
  };
 }

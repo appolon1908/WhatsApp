@@ -66,3 +66,58 @@ test("staging retains separate explicit enrollment admin key while production de
  assert.equal(approved.tenant,"CODESTRA");
  await assert.rejects(auth.authorize({headers:{"x-phone-admin-token":"bad","x-tenant-id":"CODESTRA"}}),e=>e.code==="unauthorized");
 });
+
+test("message command rejects staging admin token and browser spoofed identity",async()=>{
+ const {createApp}=await import("../src/server.mjs");
+ const {once}=await import("node:events");
+ const cfg=loadConfig({
+   WHATSAPP_PRODUCTION_SEND:"true",WHATSAPP_EXTERNAL_RECIPIENTS:"true",
+   MIDDLEWARE_COMMAND_TYPE:"whatsapp.message.send.v1",
+   PHONE_ADMIN_TOKEN:"long-secret-012345678901234567890"
+ });
+ const actor={tenant:"TENANT_A",actor:"agent-123",authMode:"oidc"};
+ let count=0;
+ const app=createApp(cfg,{
+   phoneAuthorizer:{authorize:async()=>actor},
+   submitMiddlewareCommand:async(config,input,authorization)=>{
+     count++;assert.equal(input.tenant_id,"TENANT_A");assert.equal(input.requested_by,"agent-123");
+     assert.equal(authorization,"Bearer simulated");
+     return {status:202,middleware:{operation_id:"test-op-01",state:"QUEUED"}};
+   }
+ });
+ app.listen(0,"127.0.0.1");await once(app,"listening");
+ try{
+  const base="http://127.0.0.1:"+app.address().port;
+  const input={recipient:"+18095550123",consent_status:"opted_in",suppressed:false,opted_out:false,
+    idempotency_key:"secure-idem-123456789",message:{type:"text",text:"test only"}};
+  const submit=async obj=>{
+    const r=await fetch(base+"/platform/v1/whatsapp/messages",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer simulated"},body:JSON.stringify(obj)});
+    return {status:r.status,data:await r.json()};
+  };
+  assert.equal((await submit({...input,tenant_id:"WRONG_TENANT"})).status,403);
+  assert.equal((await submit({...input,requested_by:"spoofed-actor"})).status,403);
+  assert.equal(count,0);
+  const valid=await submit(input);
+  assert.equal(valid.status,202);
+  assert.equal(count,1);
+  assert.equal(valid.data.command_authority,"middleware-v3");
+ }finally{app.close();await once(app,"close");}
+});
+test("messaging never allows staging admin token to substitute for signed operator identity",async()=>{
+ const {createApp}=await import("../src/server.mjs");
+ const {once}=await import("node:events");
+ const cfg=loadConfig({WHATSAPP_PRODUCTION_SEND:"true",WHATSAPP_EXTERNAL_RECIPIENTS:"true",
+   MIDDLEWARE_COMMAND_TYPE:"whatsapp.message.send.v1",
+   PHONE_ADMIN_TOKEN:"long-secret-012345678901234567890"});
+ const app=createApp(cfg,{submitMiddlewareCommand:async()=>{throw Error("must never issue command");}});
+ app.listen(0,"127.0.0.1");await once(app,"listening");
+ try{
+  const r=await fetch("http://127.0.0.1:"+app.address().port+"/platform/v1/whatsapp/messages",{
+   method:"POST",
+   headers:{"content-type":"application/json","x-phone-admin-token":"long-secret-012345678901234567890","x-tenant-id":"TENANT_A"},
+   body:JSON.stringify({tenant_id:"TENANT_A",requested_by:"any",recipient:"+18095550123",consent_status:"opted_in",idempotency_key:"idem-00123456",message:{type:"text",text:"test"}})
+  });
+  assert.equal(r.status,403);
+  assert.equal((await r.json()).error.code,"oidc_required_for_messaging");
+ }finally{app.close();await once(app,"close");}
+});

@@ -1,4 +1,5 @@
-import { createPhoneStore, parseAdminIdentity, PhoneAccountError, safeError } from "./phone-accounts.mjs";
+import { createPhoneStore, PhoneAccountError } from "./phone-accounts.mjs";
+import { createPhoneAuthorizer } from "./phone-auth.mjs";
 import { pathToFileURL } from "node:url";
 ﻿import http from "node:http";
 import crypto from "node:crypto";
@@ -30,6 +31,7 @@ function json(res, status, body, headers = {}) {
 
 export function createApp(config = loadConfig(), dependencies = {}) {
   const phoneStore = dependencies.phoneStore || createPhoneStore(config.phoneAccountsFile);
+  const authorizer = dependencies.phoneAuthorizer || createPhoneAuthorizer(config,dependencies.authOptions);
   async function callEnrollment(action,input) {
     if(dependencies.callEnrollment)return dependencies.callEnrollment(action,input);
     if(!config.adapterServiceKey)throw new PhoneAccountError("adapter_auth_not_configured",503);
@@ -75,10 +77,32 @@ export function createApp(config = loadConfig(), dependencies = {}) {
         return json(res, result.valid ? 200 : 422, result);
       }
 
+      if(req.method==="GET" && url.pathname==="/internal/v1/whatsapp/phone-auth-config") {
+        res.setHeader("cache-control","no-store");
+        return json(res,200,{mode:config.phoneAuthMode,
+          issuer:config.phoneAuthMode==="oidc"?config.phoneOidcIssuer:null,
+          client_id:config.phoneAuthMode==="oidc"?config.phoneOidcClient:null,
+          audience:config.phoneAuthMode==="oidc"?config.phoneOidcAudience:null,
+          production_go:false});
+      }
+      if(req.method==="GET" && url.pathname==="/internal/v1/whatsapp/phone-readiness") {
+        await authorizer.authorize(req);
+        res.setHeader("cache-control","no-store");
+        const gates={
+          oidc_required:config.phoneAuthMode==="oidc",
+          durable_store:config.phoneAccountsFile!==":memory:",
+          backup_certified:config.phoneBackupVerified,
+          middleware_command_configured:Boolean(config.middlewareCommandType),
+          messaging_off:!config.productionSend&&!config.externalRecipients&&!config.bulkSend&&!config.aiAutoreply,
+          enrollment_effects_off:!config.phoneEnrollmentEnabled
+        };
+        return json(res,200,{status:Object.values(gates).every(Boolean)?"ready_for_staged_activation":"blocked",
+          production_approved:false,gates});
+      }
       const accountRoot="/internal/v1/whatsapp/phone-accounts";
       if(url.pathname===accountRoot || url.pathname.startsWith(accountRoot+"/")) {
         // Always authorize before parsing or revealing account existence.
-        const identity=parseAdminIdentity(req,config);
+        const identity=await authorizer.authorize(req);
         res.setHeader("cache-control","no-store");
         res.setHeader("x-content-type-options","nosniff");
         if(url.pathname===accountRoot) {

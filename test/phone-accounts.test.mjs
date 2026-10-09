@@ -92,9 +92,48 @@ test("provider rejection cannot falsely advance a phone registration",async()=>{
   const account=await request("POST",route,meta);
   const result=await request("POST",route+"/"+account.body.id+"/actions/request-code",
     {expected_version:1,input:{method:"SMS",language:"en_US"}},{"idempotency-key":"negative-provider-001"});
-  assert.equal(result.status,502);
+  assert.equal(result.status,503);
+  assert.equal(result.body.error.code,"provider_reconciliation_required");
   const after=await request("GET",route+"/"+account.body.id);
   assert.equal(after.body.state,"draft");
   assert.equal(after.body.version,1);
+  assert.equal(after.body.needs_reconciliation,true);
  },{enabled:true,callEnrollment:async()=>({accepted:false})});
+});
+
+test("failed provider effects remain write-ahead-blocked across server restart",async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),"codestra-provider-crash-")),file=path.join(dir,"accounts.json");
+ let id,calls=0;
+ try{
+  await withApp(async({request})=>{
+   const created=await request("POST",route,meta);id=created.body.id;
+   const attempt=await request("POST",route+"/"+id+"/actions/request-code",
+      {expected_version:1,input:{method:"SMS",language:"en_US"}},{"idempotency-key":"single-attempt-0000001"});
+   assert.equal(attempt.status,503);
+   assert.equal(attempt.body.error.code,"provider_reconciliation_required");
+   assert.equal(calls,1);
+  },{file,enabled:true,callEnrollment:async()=>{calls++;throw new Error("connection lost after request");}});
+  await withApp(async({request})=>{
+   const state=await request("GET",route+"/"+id);
+   assert.equal(state.body.needs_reconciliation,true);
+   assert.equal(state.body.state,"draft");
+   const retry=await request("POST",route+"/"+id+"/actions/request-code",
+      {expected_version:1,input:{method:"SMS",language:"en_US"}},{"idempotency-key":"single-attempt-0000001"});
+   assert.equal(retry.status,423);
+   assert.equal(retry.body.error.code,"provider_reconciliation_required");
+   assert.equal(calls,1);
+  },{file,enabled:true,callEnrollment:async()=>{calls++;return {accepted:true};}});
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});
+test("Meta ownership verification and registration cannot skip required lifecycle state",async()=>{
+ await withApp(async({request})=>{
+  const created=await request("POST",route,meta);
+  const verify=await request("POST",route+"/"+created.body.id+"/actions/verify-code",
+     {expected_version:1,input:{code:"123456"}},{"idempotency-key":"transition-verify-001"});
+  assert.equal(verify.status,409);
+  assert.equal(verify.body.error.code,"invalid_account_transition");
+  const register=await request("POST",route+"/"+created.body.id+"/actions/register",
+     {expected_version:1,input:{pin:"123456"}},{"idempotency-key":"transition-register-001"});
+  assert.equal(register.status,409);
+ },{enabled:true,callEnrollment:async()=>{throw new Error("must not call");}});
 });

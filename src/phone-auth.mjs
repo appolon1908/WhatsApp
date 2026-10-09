@@ -9,9 +9,9 @@ function jwtPart(raw){
 }
 export function createPhoneAuthorizer(config,{fetcher=fetch,clock=()=>Math.floor(Date.now()/1000)}={}) {
  let cached={at:0,keys:[]};
- async function jwks(){
+ async function jwks(force=false){
    const now=clock();
-   if(cached.keys.length && now-cached.at<300)return cached.keys;
+   if(!force && cached.keys.length && now-cached.at<300)return cached.keys;
    if(!config.phoneOidcIssuer?.startsWith("https://") ||
       !/^https:\/\/[^/?#]+\/realms\/[A-Za-z0-9_-]+$/.test(config.phoneOidcIssuer))deny("oidc_issuer_invalid",503);
    let response;
@@ -35,8 +35,10 @@ export function createPhoneAuthorizer(config,{fetcher=fetch,clock=()=>Math.floor
    const raw=header.slice(7),parts=raw.split(".");
    if(parts.length!==3)deny("invalid_access_token");
    const jwtHeader=jwtPart(parts[0]),claims=jwtPart(parts[1]);
+   if(!jwtHeader||typeof jwtHeader!=="object"||!claims||typeof claims!=="object"||Array.isArray(claims))deny("invalid_access_token");
    if(jwtHeader.alg!=="RS256"||!safeText(jwtHeader.kid))deny("invalid_access_token");
-   const key=(await jwks()).find(j=>j.kid===jwtHeader.kid);
+   let key=(await jwks()).find(j=>j.kid===jwtHeader.kid);
+   if(!key)key=(await jwks(true)).find(j=>j.kid===jwtHeader.kid);
    if(!key)deny("jwt_signing_key_unknown");
    let verified=false;
    try{

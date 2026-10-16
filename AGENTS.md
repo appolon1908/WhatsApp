@@ -79,3 +79,11 @@ After parent integration, verify exact intended changes are present, remove obso
 ## Fail closed
 
 When safety cannot be proven, stop and mark BLOCKED. Never guess around secrets, migrations, authorization, branch ancestry, production effects, destructive operations, or incomplete CI evidence.
+
+## WhatsApp application-specific safety invariants
+
+- All provider effects must pass through the reviewed Middleware V3 :8095 command API; the application must never send directly to Evolution, Baileys or Meta.
+- Middleware alone owns durable command idempotency, ledger/outbox, retries, DLQ/replay and reconciliation.
+- Require explicit recipient opt-in and reject suppressed/opted-out contacts **before** any message submission.
+- `WHATSAPP_PRODUCTION_SEND=false` is the default and cannot independently activate sending; the separate `PRODUCTION_GO=YES`, `LIVE_CAPABILITIES_ENABLED=YES`, and `EXTERNAL_EFFECTS=true` gates must be authorized explicitly. Do not change production effects without a reviewed activation mission.
+- Never publish secrets or bypass authentication, tenant binding, consent, approval, or exact-SHA checks.

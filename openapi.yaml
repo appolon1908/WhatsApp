@@ -23,9 +23,183 @@ paths:
         "422": { description: Campaign invalid }
   /platform/v1/whatsapp/messages:
     post:
-      description: Submit an eligible WhatsApp effect to Middleware V3. Fail-closed by default.
+      description: >-
+        Submit an eligible WhatsApp command to Middleware V3. Fail-closed by default.
+        Middleware authenticates the forwarded bearer token and authorizes the tenant,
+        requested_by subject, command capability and campaign. A successful response
+        acknowledges a durable operation; it does not establish provider delivery.
+        Callers must retain command_id, correlation_id and idempotency_key across retries.
+      security:
+        - middlewareBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageSubmission"
       responses:
-        "202": { description: Middleware accepted }
-        "403": { description: Recipient not eligible }
+        "200":
+          description: Middleware acknowledged an existing operation, including an exact replay.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageAcknowledgement"
+        "201":
+          description: Validated Middleware creation acknowledgement, supported for compatibility.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageAcknowledgement"
+        "202":
+          description: Middleware accepted a durable operation for asynchronous processing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageAcknowledgement"
+        "400": { description: Invalid request, including a missing or blank campaign_id. }
+        "401": { description: Middleware authentication rejected the forwarded token. }
+        "403": { description: Recipient not eligible or Middleware authorization denied. }
+        "408": { description: Middleware timeout; retry with the original identifiers. }
+        "409": { description: Middleware command or idempotency conflict. }
+        "413": { description: Request body exceeds 1 MiB. }
         "423": { description: Production/external sends disabled }
-        "503": { description: Middleware WhatsApp command family not registered/configured }
+        "429": { description: Middleware rate limit; retry with the original identifiers. }
+        "502":
+          description: >-
+            Middleware returned an invalid or unsupported successful acknowledgement,
+            or an upstream gateway error. A locally detected invalid acknowledgement
+            returns error.code=middleware_ack_invalid and error.retryable=true.
+            The command may already exist; retry only with the original identifiers.
+        "503": { description: Command family unregistered/configuration unavailable, or Middleware unavailable. }
+        default:
+          description: >-
+            Other non-success Middleware statuses are preserved, with the upstream body
+            under middleware. A transport or internal error may return HTTP 500.
+components:
+  securitySchemes:
+    middlewareBearer:
+      type: http
+      scheme: bearer
+      description: >-
+        Forwarded to Middleware for authentication. The integration needs platform.command
+        scope, authority for tenant_id and campaign_id, and a token subject equal to requested_by.
+  schemas:
+    MessageSubmission:
+      type: object
+      required: [tenant_id, requested_by, idempotency_key, recipient, campaign_id, message]
+      properties:
+        tenant_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Business scope independently authorized by Middleware.
+        requested_by:
+          type: string
+          minLength: 1
+          maxLength: 300
+          description: Must equal the authenticated Middleware token subject.
+        command_id:
+          type: string
+          format: uuid
+          description: >-
+            Stable caller-generated UUID, preferably in lowercase hyphenated form.
+            ACK validation compares the actual forwarded UUID value; compact hexadecimal,
+            braced and urn:uuid: representations remain compatible with canonical Middleware
+            serialization. The legacy API generates a UUID if omitted;
+            callers that need reliable retries must supply and retain it before submission.
+        correlation_id:
+          type: string
+          minLength: 1
+          maxLength: 180
+          description: Stable trace reference; the legacy API generates a UUID if omitted.
+        idempotency_key:
+          type: string
+          minLength: 8
+          maxLength: 180
+          description: Stable Middleware deduplication key; reuse on an ambiguous outcome.
+        recipient:
+          type: string
+          minLength: 1
+          pattern: '\S'
+        campaign_id:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: >-
+            Required nonblank campaign reference, forwarded as payload.campaign_id.
+            business_context.campaign_id cannot substitute for this field.
+            Presence does not establish campaign approval.
+        instance_id:
+          type: [string, "null"]
+          description: Provider account/instance reference forwarded to Middleware.
+        provider:
+          type: string
+          enum: [meta, evolution]
+          description: >-
+            Accepted caller metadata, currently not forwarded or used for provider selection.
+            Tenant/provider routing must be established in Middleware and its adapter.
+        phone_number_id:
+          type: string
+          description: >-
+            Accepted caller metadata, currently not forwarded or used for phone selection.
+            This field does not establish channel ownership.
+        message:
+          type: object
+          description: Provider message payload; the current commerce integration sends text messages.
+          properties:
+            type: { type: string, examples: [text] }
+            text: { type: string, examples: [Order received] }
+        consent_status:
+          type: [string, "null"]
+          description: >-
+            Canonical consent decision. When present, only the exact value opted_in is
+            eligible. Unknown, negative, null and blank values remain ineligible even
+            if consent_verified is true.
+        consent_verified:
+          type: boolean
+          description: >-
+            Compatibility evidence for commerce callers. Only boolean true supplies
+            opted-in evidence, and only when consent_status is absent. It does not
+            override suppression, opt-out or Middleware authorization.
+        suppressed:
+          type: boolean
+          default: false
+          description: A true value always denies submission before Middleware.
+        opted_out:
+          type: boolean
+          default: false
+          description: A true value always denies submission before Middleware.
+        business_context:
+          type: object
+          description: Business evidence forwarded unchanged; not an authorization grant.
+    MessageAcknowledgement:
+      type: object
+      required: [command_authority, command_id, correlation_id, operation_id, middleware]
+      properties:
+        command_authority:
+          const: middleware-v3
+        command_id:
+          type: string
+          format: uuid
+          description: >-
+            Original caller command representation, verified against the actual forwarded
+            command and Middleware acknowledgement. Supported UUID representations compare by value.
+        correlation_id:
+          type: string
+          description: Original request correlation ID.
+        operation_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+          description: Actual nonblank Middleware operation ID, never synthesized by this API.
+        middleware:
+          type: object
+          required: [command_id, operation_id]
+          description: Original validated Middleware acknowledgement retained for compatibility.
+          properties:
+            command_id: { type: string, format: uuid }
+            operation_id: { type: string, minLength: 1, maxLength: 200 }
+            state: { type: string }
+            correlation_id: { type: string }
+            duplicate: { type: boolean }

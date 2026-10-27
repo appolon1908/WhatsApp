@@ -1,0 +1,31 @@
+name: Policy contract checks
+
+on:
+  push:
+    branches: ["atomic_task/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-contract:
+    name: Policy API contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/server.mjs
+          node --check src/middleware.mjs
+      - name: Run isolated contract and repository tests
+        run: npm test

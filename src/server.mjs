@@ -26,6 +26,46 @@ function json(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+function uuidIdentity(value) {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let candidate = value;
+  if (value.startsWith("urn:uuid:")) candidate = value.slice(9);
+  else if (value.startsWith("{") && value.endsWith("}")) candidate = value.slice(1, -1);
+  if (uuid.test(candidate)) return candidate.replaceAll("-", "").toLowerCase();
+  if (candidate === value && /^[0-9a-f]{32}$/i.test(value)) return value.toLowerCase();
+  return null;
+}
+
+function sameCommandId(actual, expected) {
+  if (typeof actual !== "string" || typeof expected !== "string") return false;
+  if (actual === expected) return true;
+  // Middleware parses UUIDs and serializes their canonical lowercase form.
+  // Preserve case sensitivity for any legacy opaque reference.
+  const identity = uuidIdentity(actual);
+  return identity !== null && identity === uuidIdentity(expected);
+}
+
+function middlewareAcknowledgement(result, commandId) {
+  const body = result.middleware;
+  if (
+    ![200, 201, 202].includes(result.status)
+    || body === null || typeof body !== "object" || Array.isArray(body)
+    || !sameCommandId(body.command_id, commandId)
+    || typeof body.operation_id !== "string"
+    || body.operation_id.trim().length === 0 || body.operation_id.length > 200
+  ) return null;
+
+  try {
+    return {
+      operation_id: body.operation_id,
+      location: `/platform/v1/operations/${encodeURIComponent(body.operation_id)}`
+    };
+  } catch {
+    // A malformed Unicode identifier cannot form a valid operation reference.
+    return null;
+  }
+}
+
 export function createApp(config = loadConfig()) {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
@@ -77,9 +117,13 @@ export function createApp(config = loadConfig()) {
           });
         }
 
+        // Compatibility evidence never overrides an explicit canonical consent decision.
+        const consentStatus = Object.hasOwn(body, "consent_status")
+          ? body.consent_status
+          : body.consent_verified === true ? "opted_in" : undefined;
         const eligibility = evaluateEligibility({
           recipient: body.recipient,
-          consent_status: body.consent_status,
+          consent_status: consentStatus,
           suppressed: body.suppressed,
           opted_out: body.opted_out
         });
@@ -98,12 +142,20 @@ export function createApp(config = loadConfig()) {
 
         const authorization = req.headers.authorization;
         const result = await submitMiddlewareCommand(config, body, authorization);
+        const acknowledgement = result.ok ? middlewareAcknowledgement(result, result.envelope.command_id) : null;
+        if (result.ok && !acknowledgement) {
+          // The command may already exist. Callers must retry with their original identifiers.
+          return json(res, 502, {
+            error: { code: "middleware_ack_invalid", message: "Middleware acknowledgement is invalid", retryable: true }
+          });
+        }
         return json(res, result.status, {
           command_authority: "middleware-v3",
           command_id: body.command_id,
           correlation_id: body.correlation_id,
+          operation_id: acknowledgement?.operation_id,
           middleware: result.middleware
-        }, { location: result.middleware?.operation_id ? `/platform/v1/operations/${result.middleware.operation_id}` : "" });
+        }, { location: acknowledgement?.location || "" });
       }
 
       return json(res, 404, { error: { code: "not_found" } });

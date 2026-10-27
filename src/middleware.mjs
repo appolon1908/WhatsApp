@@ -7,6 +7,7 @@ export async function submitMiddlewareCommand(config, input, authorization) {
   const idempotencyKey = requireString(input.idempotency_key, "idempotency_key", 8);
   const correlationId = requireString(input.correlation_id, "correlation_id");
   const commandId = requireString(input.command_id, "command_id");
+  const campaignId = requireString(input.campaign_id, "campaign_id");
   requireString(authorization, "Authorization");
 
   const envelope = {
@@ -19,6 +20,7 @@ export async function submitMiddlewareCommand(config, input, authorization) {
     idempotency_key: idempotencyKey,
     payload: {
       channel: "whatsapp",
+      campaign_id: campaignId,
       recipient: input.recipient,
       instance_id: input.instance_id ?? null,
       message: input.message,

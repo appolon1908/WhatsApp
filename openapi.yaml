@@ -56,7 +56,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageAcknowledgement"
-        "400": { description: Invalid request, including a missing or blank campaign_id. }
+        "400": { description: Invalid request, including missing or malformed campaign/channel context. }
         "401": { description: Middleware authentication rejected the forwarded token. }
         "403": { description: Recipient not eligible or Middleware authorization denied. }
         "408": { description: Middleware timeout; retry with the original identifiers. }
@@ -86,7 +86,7 @@ components:
   schemas:
     MessageSubmission:
       type: object
-      required: [tenant_id, requested_by, idempotency_key, recipient, campaign_id, message]
+      required: [tenant_id, requested_by, idempotency_key, recipient, campaign_id, message, provider, instance_id, phone_number_id, channel_id, binding_revision]
       properties:
         tenant_id:
           type: string
@@ -130,19 +130,33 @@ components:
             business_context.campaign_id cannot substitute for this field.
             Presence does not establish campaign approval.
         instance_id:
-          type: [string, "null"]
-          description: Provider account/instance reference forwarded to Middleware.
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[!-~]{1,200}$'
+          description: Provider account/instance constraint matched against the adapter-owned verified binding.
         provider:
           type: string
           enum: [meta, evolution]
-          description: >-
-            Accepted caller metadata, currently not forwarded or used for provider selection.
-            Tenant/provider routing must be established in Middleware and its adapter.
+          description: Forwarded channel constraint; not authority to choose another business sender.
         phone_number_id:
           type: string
-          description: >-
-            Accepted caller metadata, currently not forwarded or used for phone selection.
-            This field does not establish channel ownership.
+          minLength: 1
+          maxLength: 200
+          pattern: '^[!-~]{1,200}$'
+          description: Verified sender constraint; never sufficient proof of tenant ownership.
+        channel_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[!-~]{1,200}$'
+          description: Tenant-owned channel identifier preserved across retries.
+        binding_revision:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[!-~]{1,200}$'
+          description: Opaque verified ownership generation; stale generations must fail closed.
         message:
           type: object
           description: Provider message payload; the current commerce integration sends text messages.

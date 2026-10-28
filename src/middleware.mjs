@@ -1,4 +1,19 @@
-﻿import { requireString } from "./domain.mjs";
+﻿import { DomainError, requireString } from "./domain.mjs";
+
+// Routing identifiers are hints; only the adapter-owned verified binding authorizes a sender.
+function channelContext(input) {
+  const result = {};
+  for (const name of ["provider", "instance_id", "phone_number_id", "channel_id", "binding_revision"]) {
+    if (typeof input[name] !== "string" || !/^[\x21-\x7e]{1,200}$/.test(input[name])) {
+      throw new DomainError("invalid_channel_context", "Complete channel context is required", 400);
+    }
+    result[name] = input[name];
+  }
+  if (!["meta", "evolution"].includes(result.provider)) {
+    throw new DomainError("invalid_channel_context", "Unsupported channel provider", 400);
+  }
+  return result;
+}
 
 export async function submitMiddlewareCommand(config, input, authorization) {
   const commandType = requireString(config.middlewareCommandType, "MIDDLEWARE_COMMAND_TYPE");
@@ -9,6 +24,7 @@ export async function submitMiddlewareCommand(config, input, authorization) {
   const commandId = requireString(input.command_id, "command_id");
   const campaignId = requireString(input.campaign_id, "campaign_id");
   requireString(authorization, "Authorization");
+  const routing = channelContext(input);
 
   const envelope = {
     command_id: commandId,
@@ -22,7 +38,7 @@ export async function submitMiddlewareCommand(config, input, authorization) {
       channel: "whatsapp",
       campaign_id: campaignId,
       recipient: input.recipient,
-      instance_id: input.instance_id ?? null,
+      ...routing,
       message: input.message,
       business_context: input.business_context ?? {}
     }

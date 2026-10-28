@@ -59,6 +59,8 @@ function messageRequest(overrides = {}) {
     recipient: "15550000000",
     instance_id: "verified-account-1",
     phone_number_id: "verified-phone-1",
+    channel_id: "channel-1",
+    binding_revision: "proof-1",
     provider: "meta",
     message: { type: "text", text: "Order received" },
     consent_status: "opted_in",
@@ -151,6 +153,10 @@ test("message submission preserves campaign and command identity in the Middlewa
         campaign_id: "approved-campaign-1",
         recipient: "15550000000",
         instance_id: "verified-account-1",
+        phone_number_id: "verified-phone-1",
+        provider: "meta",
+        channel_id: "channel-1",
+        binding_revision: "proof-1",
         message: { type: "text", text: "Order received" },
         business_context: { source: "commerce", consent_evidence: "consent-record-1" }
       }

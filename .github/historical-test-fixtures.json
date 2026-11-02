@@ -1,0 +1,818 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-accounts.test.mjs",
+    "StartLine": 132,
+    "Commit": "0ec7c1627a6876ef63890e282e0e0d9dfa28d4c4",
+    "Fingerprint": "0ec7c1627a6876ef63890e282e0e0d9dfa28d4c4:test/phone-accounts.test.mjs:generic-api-key:132",
+    "file_sha256": "2041591829d459bb87f0682f6ffeeb9cbae8ae0d1a6bfed055f37156a5ddce52",
+    "line_sha256": "53ab7526cc423a3259c752793b7ada5236bca284f2a2ca40c1cfc6f8f2725bec",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 8025,
+        "end": 8026,
+        "value_sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+        "value_length": 1,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "ExpressionStatement",
+          "AwaitExpression",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 8039,
+        "end": 8047,
+        "value_sha256": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        "value_length": 6,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "ExpressionStatement",
+          "AwaitExpression",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 8051,
+        "end": 8068,
+        "value_sha256": "a7ad0f91d507a4fc7dcdf356c0b7e9375a89b315d297ebcf6b5544668a611bdc",
+        "value_length": 15,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "ExpressionStatement",
+          "AwaitExpression",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 8069,
+        "end": 8092,
+        "value_sha256": "a90271a07412aba1f98776965b1c0640c41a21c04b335b2aa75953766094c6d2",
+        "value_length": 21,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "ExpressionStatement",
+          "AwaitExpression",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 76,
+    "Commit": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd",
+    "Fingerprint": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd:test/phone-auth-oidc.test.mjs:generic-api-key:76",
+    "file_sha256": "ed2e7d4b6aeb0231b4d9ff253164fd77750894567bb9d408539a7e555b9d8912",
+    "line_sha256": "e6e79f9c2258d224a382d263db391c141c3381074eba58878ebaa9b36b882036",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4871,
+        "end": 4906,
+        "value_sha256": "efc70491c4f17da6ffd6134e6f7205731848318a879ee02df61bc2137b7ed83d",
+        "value_length": 33,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 111,
+    "Commit": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd",
+    "Fingerprint": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd:test/phone-auth-oidc.test.mjs:generic-api-key:111",
+    "file_sha256": "ed2e7d4b6aeb0231b4d9ff253164fd77750894567bb9d408539a7e555b9d8912",
+    "line_sha256": "ab72c95d96a70ec51bed9bb3af88dfd4516011fbfe2d3716928b80eed81d9701",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 6706,
+        "end": 6741,
+        "value_sha256": "efc70491c4f17da6ffd6134e6f7205731848318a879ee02df61bc2137b7ed83d",
+        "value_length": 33,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 117,
+    "Commit": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd",
+    "Fingerprint": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd:test/phone-auth-oidc.test.mjs:generic-api-key:117",
+    "file_sha256": "ed2e7d4b6aeb0231b4d9ff253164fd77750894567bb9d408539a7e555b9d8912",
+    "line_sha256": "b7ba8ca502810f3f69a43efd60dd56c3359a57aed95a4aaab571f6cdd1e16233",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 7038,
+        "end": 7052,
+        "value_sha256": "846b3a9229ce9875e7c7ade3e7361fab0c4e38d5bb471de2773ee121692b2b3d",
+        "value_length": 12,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7053,
+        "end": 7071,
+        "value_sha256": "bacb769b46f6d169fb227ea026550f411d46cbe66a9c2a6ba36449c8cf8e4dea",
+        "value_length": 16,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7072,
+        "end": 7093,
+        "value_sha256": "35507994067cac38124988fa5249470f6c4acc1e7a7a98c0889d188c40bdb2bc",
+        "value_length": 19,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7094,
+        "end": 7129,
+        "value_sha256": "efc70491c4f17da6ffd6134e6f7205731848318a879ee02df61bc2137b7ed83d",
+        "value_length": 33,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7130,
+        "end": 7143,
+        "value_sha256": "f438508113a346f3ccf92e49c0f1a36922980dbe80383b7c3cb5217ce236851a",
+        "value_length": 11,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7144,
+        "end": 7154,
+        "value_sha256": "464fd866dce9d694664dc49068bd052a0cbc7290463f5478ac327b9a0187739d",
+        "value_length": 8,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 118,
+    "Commit": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd",
+    "Fingerprint": "3fd1f0a16ff6c13071a46c6c7c606c10e2136efd:test/phone-auth-oidc.test.mjs:generic-api-key:118",
+    "file_sha256": "ed2e7d4b6aeb0231b4d9ff253164fd77750894567bb9d408539a7e555b9d8912",
+    "line_sha256": "d7a280b328c6ffb1860cbbcfb2f662fd9577cd0975d519184526ce5fe3d3ea19",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 7191,
+        "end": 7201,
+        "value_sha256": "464fd866dce9d694664dc49068bd052a0cbc7290463f5478ac327b9a0187739d",
+        "value_length": 8,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7215,
+        "end": 7220,
+        "value_sha256": "d6a7cd2a7371b1a15d543196979ff74fdb027023ebf187d5d329be11055c77fd",
+        "value_length": 3,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7231,
+        "end": 7245,
+        "value_sha256": "4050e59a2a745984d5d94b4022b2ec4bde5a1acd32e1f39231cf0060c0c072c3",
+        "value_length": 12,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7261,
+        "end": 7271,
+        "value_sha256": "556c05fea2d36493513788a949bcc481cf85ea25a4d28c73e78c134f1132fccf",
+        "value_length": 8,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7288,
+        "end": 7303,
+        "value_sha256": "b65fd2800412c4b39fcfd9fc80dce266f597cbadd6074ea8cf3016113cb71741",
+        "value_length": 13,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7318,
+        "end": 7324,
+        "value_sha256": "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1",
+        "value_length": 4,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 7330,
+        "end": 7336,
+        "value_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "value_length": 4,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 64,
+    "Commit": "f0e41fa6284bc0cb5f41584a906dfa37319f22c8",
+    "Fingerprint": "f0e41fa6284bc0cb5f41584a906dfa37319f22c8:test/phone-auth-oidc.test.mjs:generic-api-key:64",
+    "file_sha256": "daf38f699031deddd6f1b986d0cf47cdad7d652a0de3b784efbbf1efa1e378d8",
+    "line_sha256": "f65da69c7becaa1d2521b23a5dd28185ce7c9940e7511bd25767f09d84fe307e",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4157,
+        "end": 4192,
+        "value_sha256": "efc70491c4f17da6ffd6134e6f7205731848318a879ee02df61bc2137b7ed83d",
+        "value_length": 33,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "CallExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/phone-auth-oidc.test.mjs",
+    "StartLine": 65,
+    "Commit": "f0e41fa6284bc0cb5f41584a906dfa37319f22c8",
+    "Fingerprint": "f0e41fa6284bc0cb5f41584a906dfa37319f22c8:test/phone-auth-oidc.test.mjs:generic-api-key:65",
+    "file_sha256": "daf38f699031deddd6f1b986d0cf47cdad7d652a0de3b784efbbf1efa1e378d8",
+    "line_sha256": "f07e3c254545b290acf054cba78f60c9632efcc97b328784e84091866db8751f",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4244,
+        "end": 4265,
+        "value_sha256": "35507994067cac38124988fa5249470f6c4acc1e7a7a98c0889d188c40bdb2bc",
+        "value_length": 19,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 4266,
+        "end": 4301,
+        "value_sha256": "efc70491c4f17da6ffd6134e6f7205731848318a879ee02df61bc2137b7ed83d",
+        "value_length": 33,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 4302,
+        "end": 4315,
+        "value_sha256": "f438508113a346f3ccf92e49c0f1a36922980dbe80383b7c3cb5217ce236851a",
+        "value_length": 11,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 4316,
+        "end": 4326,
+        "value_sha256": "2c4bfed459375804f8450b569cb1dc106841f32917032ad7d5669af45d5b662b",
+        "value_length": 8,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/server.test.mjs",
+    "StartLine": 87,
+    "Commit": "9ae7598982ce45c5c4cd8168a4bd0fbd36f36b7a",
+    "Fingerprint": "9ae7598982ce45c5c4cd8168a4bd0fbd36f36b7a:test/server.test.mjs:generic-api-key:87",
+    "file_sha256": "41d6b21fb23a0689ac1d0e6a69c70a2e816b97fbf0c0d0b3890d78153b261b4f",
+    "line_sha256": "39fe66a3148d3ea2069e34accc586a6866a08db7af4f86910458c61b852bcf06",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 3488,
+        "end": 3505,
+        "value_sha256": "a7ad0f91d507a4fc7dcdf356c0b7e9375a89b315d297ebcf6b5544668a611bdc",
+        "value_length": 15,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 3507,
+        "end": 3522,
+        "value_sha256": "f05c95731929bc4d7259a6bed2365c21ee9d7e6c940e0a923583fc613fcecc5c",
+        "value_length": 13,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/server.test.mjs",
+    "StartLine": 103,
+    "Commit": "9ae7598982ce45c5c4cd8168a4bd0fbd36f36b7a",
+    "Fingerprint": "9ae7598982ce45c5c4cd8168a4bd0fbd36f36b7a:test/server.test.mjs:generic-api-key:103",
+    "file_sha256": "41d6b21fb23a0689ac1d0e6a69c70a2e816b97fbf0c0d0b3890d78153b261b4f",
+    "line_sha256": "f683f95220d845e5bf33ccbfd0cd8c248523bd47e618c4029d6803116d75a42e",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4121,
+        "end": 4136,
+        "value_sha256": "f05c95731929bc4d7259a6bed2365c21ee9d7e6c940e0a923583fc613fcecc5c",
+        "value_length": 13,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "ExpressionStatement",
+          "CallExpression"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/server.test.mjs",
+    "StartLine": 106,
+    "Commit": "f4f065abfa71897288eed309a910713a87b8d36b",
+    "Fingerprint": "f4f065abfa71897288eed309a910713a87b8d36b:test/server.test.mjs:generic-api-key:106",
+    "file_sha256": "067399d6a084830a4c83249ca8442b6a207abfed954e4b6a1f5318408a29563c",
+    "line_sha256": "39fe66a3148d3ea2069e34accc586a6866a08db7af4f86910458c61b852bcf06",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4023,
+        "end": 4040,
+        "value_sha256": "a7ad0f91d507a4fc7dcdf356c0b7e9375a89b315d297ebcf6b5544668a611bdc",
+        "value_length": 15,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      },
+      {
+        "start": 4042,
+        "end": 4057,
+        "value_sha256": "f05c95731929bc4d7259a6bed2365c21ee9d7e6c940e0a923583fc613fcecc5c",
+        "value_length": 13,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "VariableDeclaration",
+          "VariableDeclarator",
+          "AwaitExpression",
+          "CallExpression",
+          "ObjectExpression",
+          "Property",
+          "ObjectExpression",
+          "Property"
+        ]
+      }
+    ]
+  },
+  {
+    "RuleID": "generic-api-key",
+    "File": "test/server.test.mjs",
+    "StartLine": 122,
+    "Commit": "f4f065abfa71897288eed309a910713a87b8d36b",
+    "Fingerprint": "f4f065abfa71897288eed309a910713a87b8d36b:test/server.test.mjs:generic-api-key:122",
+    "file_sha256": "067399d6a084830a4c83249ca8442b6a207abfed954e4b6a1f5318408a29563c",
+    "line_sha256": "f683f95220d845e5bf33ccbfd0cd8c248523bd47e618c4029d6803116d75a42e",
+    "classification_proposed": "synthetic idempotency/header/auth fixture",
+    "review_status": "INDEPENDENTLY_CLASSIFIED_SYNTHETIC_BY_AGENT_A",
+    "literal_proofs": [
+      {
+        "start": 4656,
+        "end": 4671,
+        "value_sha256": "f05c95731929bc4d7259a6bed2365c21ee9d7e6c940e0a923583fc613fcecc5c",
+        "value_length": 13,
+        "ancestors": [
+          "Program",
+          "ExpressionStatement",
+          "CallExpression",
+          "ArrowFunctionExpression",
+          "BlockStatement",
+          "TryStatement",
+          "BlockStatement",
+          "ExpressionStatement",
+          "CallExpression"
+        ]
+      }
+    ]
+  }
+]

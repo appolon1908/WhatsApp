@@ -1,24 +1,29 @@
 {
   "schema": "codestra.deployment-contract.v1",
-  "repository": "ingtrader21-spec/WhatsApp",
-  "role": "provider-adapter-connector",
+  "repository": "appolon1908/WhatsApp",
+  "role": "product-domain-service",
   "standalone_required": true,
   "canonical_integration": {
     "public_edge": "Caddy",
     "api_gateway": "Kong",
+    "application_service": "codestra-whatsapp-app",
+    "application_submission_route": "/platform/v1/whatsapp/messages",
     "middleware_runtime": "middleware-integration-api:8095",
-    "command_api": "/platform/v1",
+    "command_api": "/platform/v1/commands",
     "internal_and_metrics_public": false
   },
   "existing_assets": {
     "dockerfile_detected": false,
     "compose_detected": false,
     "kubernetes_or_helm_detected": false,
-    "health_or_readiness_signal_detected": false
+    "health_or_readiness_signal_detected": true
   },
   "health_readiness": {
     "required": true,
-    "status": "design-required"
+    "status": "implemented-source-only",
+    "health_endpoint": "/healthz",
+    "readiness_endpoint": "/readyz",
+    "certifies_provider_readiness": false
   },
   "secrets": {
     "mode": "references-only",

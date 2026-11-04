@@ -4,7 +4,9 @@ This repository remains independently buildable, testable, deployable, observabl
 
 ## Canonical integration path
 
-Public client -> Caddy -> Kong -> Middleware integration API :8095 -> /platform/v1 command kernel -> durable idempotency + command ledger -> outbox/worker -> owned adapter -> downstream domain/provider -> readback/reconciliation -> audit/metrics/traces
+Public client -> Caddy -> Kong -> WhatsApp policy API POST /platform/v1/whatsapp/messages -> production switches and recipient eligibility checks -> Middleware integration API :8095 POST /platform/v1/commands -> durable idempotency + command ledger -> outbox/worker -> owned adapter -> downstream domain/provider -> readback/reconciliation -> audit/metrics/traces
+
+WhatsApp message submissions must pass through the application policy API before Middleware. The application enforces the production-send and external-recipient switches, command registration, consent, suppression and opt-out checks before command submission. Keep `WHATSAPP_PRODUCTION_SEND=false` by default. Middleware remains the sole provider command and transport authority; the application does not call Meta, Evolution or Baileys directly.
 
 ## Repository requirements
 
@@ -24,6 +26,8 @@ Public client -> Caddy -> Kong -> Middleware integration API :8095 -> /platform/
 ## Repository role classification
 
 Each repo must be classified as one of: Product/domain service; Provider adapter/connector; Edge; Identity/security; Automation; Observability; Data/platform; Client/UI/workstation/device.
+
+`appolon1908/WhatsApp` is a **Product/domain service** (`product-domain-service`): the WhatsApp business-policy application owns eligibility and business validation. Provider adapters and the transport ledger/outbox remain under Middleware authority.
 
 ## Design review checklist
 

@@ -263,11 +263,11 @@ test("production configuration cannot disable operator authentication", () => {
 });
 
 
-test("concurrent duplicate ingress is serialized before acceptance", async () => {
+test("concurrent provider duplicates with different event IDs are serialized before acceptance", async () => {
   const dir = await tempDir();
   const svc = new ConversationService(makeConfig(dir));
   const event = inbound();
-  const [a, b] = await Promise.all([svc.ingest(event), svc.ingest(structuredClone(event))]);
+  const [a, b] = await Promise.all([svc.ingest(event), svc.ingest({ ...event, event_id: crypto.randomUUID() })]);
   assert.equal([a.duplicate, b.duplicate].filter(Boolean).length, 1);
   const conversation = a.conversation || b.conversation;
   assert.equal(svc.store.getMessages(conversation.conversation_id).length, 1);
@@ -306,3 +306,96 @@ test("retry timer processes due work without requiring a service restart", async
   assert.equal(recovered.attempts, 2);
   assert.equal(svc.store.getMessages(recovered.conversation_id).length, 1);
 });
+
+async function restartAtRecord(config, service, predicate) {
+  // A real ledger prefix models a process exit immediately after a durable write.
+  const records = (await fs.readFile(service.store.ledgerPath, "utf8")).trim().split("\n").map(JSON.parse);
+  const boundary = records.findIndex(predicate);
+  assert.notEqual(boundary, -1, "the crash boundary must have been persisted");
+  await fs.writeFile(service.store.ledgerPath, records.slice(0, boundary + 1).map(JSON.stringify).join("\n") + "\n");
+  const restarted = new ConversationService(config);
+  await restarted.ready();
+  return restarted;
+}
+
+test("restart after an automation decision preserves one decision and one message", async () => {
+  const dir = await tempDir();
+  try {
+    const config = makeConfig(dir);
+    const service = new ConversationService(config);
+    const first = await service.ingest(inbound({ content: { type: "text", text: "Opening question" } }));
+    const id = first.conversation.conversation_id;
+    const restarted = await restartAtRecord(config, service, (record) => record.type === "automation.decision");
+    assert.equal(restarted.store.getEvent(first.event.event_id).processing_status, "processed");
+    assert.equal(restarted.store.getMessages(id).length, 1);
+    assert.equal(restarted.getConversation(admin(), id).unread_count, 1);
+    assert.equal(restarted.store.listAutomationsForConversation(id).length, 1);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+for (const boundary of ["message", "suppression", "pause"]) {
+  test(`restart completes STOP policy after durable ${boundary} without duplicating its message`, async () => {
+    const dir = await tempDir();
+    try {
+      const config = makeConfig(dir);
+      const service = new ConversationService(config);
+      const first = await service.ingest(inbound({ content: { type: "text", text: "Opening question" } }));
+      const stop = inbound({ content: { type: "text", text: "STOP" } });
+      await service.ingest(stop);
+      const restarted = await restartAtRecord(config, service, (record) => {
+        if (boundary === "message") return record.type === "message.append" && record.data.message.event_id === stop.event_id;
+        if (boundary === "suppression") return record.type === "suppression.requested" && record.data.request.event_id === stop.event_id;
+        return record.type === "conversation.upsert" && record.data.conversation.automation_paused;
+      });
+      const conversation = restarted.getConversation(admin(), first.conversation.conversation_id);
+      assert.equal(restarted.store.getEvent(stop.event_id).processing_status, "processed");
+      assert.equal(restarted.store.getSuppressionRequest(stop.tenant_id, stop.sender_identity)?.event_id, stop.event_id);
+      assert.equal(conversation.automation_paused, true);
+      assert.equal(conversation.unread_count, 2);
+      assert.equal(restarted.store.getMessages(conversation.conversation_id).length, 2);
+      assert.deepEqual(restarted.store.listAutomationsForConversation(conversation.conversation_id).map((item) => item.status), ["cancelled"]);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+}
+
+test("human handoff keeps later inbound automation paused until an operator resumes it", async () => {
+  const dir = await tempDir();
+  try {
+    const service = new ConversationService(makeConfig(dir));
+    await service.ingest(inbound({ content: { type: "text", text: "Please find a human agent" } }));
+    const followup = await service.ingest(inbound({ content: { type: "text", text: "My order is 123" } }));
+    const id = followup.conversation.conversation_id;
+    assert.equal(followup.conversation.status, "waiting_agent");
+    assert.equal(followup.conversation.automation_paused, true);
+    assert.deepEqual(service.store.listAutomationsForConversation(id).map((item) => item.status), ["skipped"]);
+    await service.setAutomationPaused(admin(), id, false, "operator_resume", followup.conversation.version);
+    await service.ingest(inbound({ content: { type: "text", text: "Continue please" } }));
+    assert.deepEqual(service.store.listAutomationsForConversation(id).map((item) => item.status), ["skipped", "pending"]);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+for (const boundary of ["transition", "assignment"]) {
+  test(`restart cancels automation after takeover ${boundary} persists`, async () => {
+    const dir = await tempDir();
+    try {
+      const config = makeConfig(dir);
+      const service = new ConversationService(config);
+      const first = await service.ingest(inbound({ content: { type: "text", text: "Opening question" } }));
+      const id = first.conversation.conversation_id;
+      await service.claim(admin(), id, first.conversation.version);
+      const restarted = await restartAtRecord(config, service, (record) => boundary === "assignment"
+        ? record.type === "assignment.changed"
+        : record.type === "conversation.upsert" && record.data.conversation.status === "waiting_agent");
+      assert.equal(restarted.getConversation(admin(), id).automation_paused, true);
+      assert.deepEqual(restarted.store.listAutomationsForConversation(id).map((item) => item.status), ["cancelled"]);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+}

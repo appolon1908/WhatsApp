@@ -31,9 +31,9 @@ export function verifyJwtRs256(token, config, nowSeconds = Math.floor(Date.now()
   return payload;
 }
 
-export function identityFromClaims(payload = {}) {
+export function identityFromClaims(payload = {}, resourceClient = "codestra-whatsapp") {
   const realmRoles = payload.realm_access?.roles || [];
-  const resourceRoles = Object.values(payload.resource_access || {}).flatMap((v) => v?.roles || []);
+  const resourceRoles = payload.resource_access?.[resourceClient]?.roles || [];
   const roles = new Set([...realmRoles, ...resourceRoles, ...(Array.isArray(payload.roles) ? payload.roles : [])]);
   const tenantId = payload.tenant_id || payload.tenant || payload.organization_id || null;
   return {
@@ -52,7 +52,7 @@ export function authorizeOperator(req, config, allowedRoles) {
   }
   const auth = req.headers.authorization || "";
   if (!auth.startsWith("Bearer ")) throw new DomainError("unauthorized", "Bearer authorization is required", 401);
-  const identity = identityFromClaims(verifyJwtRs256(auth.slice(7), config));
+  const identity = identityFromClaims(verifyJwtRs256(auth.slice(7), config), config.authClientId || config.authAudience);
   if (!identity.subject || !identity.tenantId) throw new DomainError("invalid_token", "JWT subject and tenant are required", 401);
   if (allowedRoles?.length && !allowedRoles.some((role) => identity.roles.has(role))) {
     throw new DomainError("forbidden", "required role is missing", 403);

@@ -80,6 +80,11 @@ export class ConversationService {
 
   async #initialize() {
     await this.store.init();
+    // Pausing is durable before cancellation; repair an interrupted takeover
+    // before the service reports ready, even when no inbound event is pending.
+    for (const conversation of this.store.conversations.values()) {
+      if (conversation.automation_paused) await this.#cancelPendingAutomation(conversation, "recovered_pause");
+    }
     this.#refreshGauges();
     await this.recoverPending();
   }
@@ -223,7 +228,8 @@ export class ConversationService {
       let conversation = this.store.getConversation(conversationId);
       if (conversation && this.store.getMessageByEvent(conversationId, event.event_id)) {
         await this.#audit({ tenantId: event.tenant_id, actorId: "system:processor", action: "inbound.reprocess_suppressed", conversationId, eventId: event.event_id, reason: "message_already_materialized" });
-        return conversation;
+        // Message durability does not imply that suppression or handoff finished.
+        return this.#applyInboundPolicy(event, conversation);
       }
       const now = new Date().toISOString();
       if (!conversation) {
@@ -268,44 +274,54 @@ export class ConversationService {
       };
       await this.store.append("message.append", { message });
       await this.store.append("inbound.status", { event_id: event.event_id, patch: { conversation_id: conversationId } });
-
-      const text = event.content.type === "text" ? String(event.content.text || "") : "";
-      if (OPTOUT.test(text)) {
-        const request = {
-          suppression_request_id: crypto.randomUUID(), tenant_id: event.tenant_id,
-          channel_identity: event.sender_identity, source: "conversation_opt_out",
-          event_id: event.event_id, conversation_id: conversationId, created_at: now
-        };
-        await this.store.append("suppression.requested", { request });
-        conversation.automation_paused = true;
-        conversation.version += 1;
-        conversation.updated_at = now;
-        await this.store.append("conversation.upsert", { conversation });
-        await this.#cancelPendingAutomation(conversation, "opt_out");
-        await this.#audit({ tenantId: event.tenant_id, actorId: "system:policy", action: "suppression.requested", conversationId, eventId: event.event_id, reason: "customer_opt_out" });
-        return conversation;
-      }
-
-      if (HUMAN.test(text)) {
-        conversation = await this.#ensureState(conversation, "waiting_agent", "customer_requested_human", "system:routing", event.event_id);
-        await this.#cancelPendingAutomation(conversation, "human_handoff");
-        await this.#audit({ tenantId: event.tenant_id, actorId: "system:routing", action: "handoff.requested", conversationId, eventId: event.event_id, reason: "customer_requested_human" });
-        return conversation;
-      }
-
-      const automation = {
-        automation_id: crypto.randomUUID(), tenant_id: event.tenant_id, conversation_id: conversationId,
-        event_id: event.event_id, conversation_version: conversation.version,
-        status: this.config.aiAutoreply && !conversation.automation_paused ? "pending" : "skipped",
-        action: this.config.aiAutoreply && !conversation.automation_paused ? "draft_response" : "none",
-        confidence: null,
-        reason: this.config.aiAutoreply ? (conversation.automation_paused ? "conversation_paused" : "policy_eligible") : "ai_autoreply_disabled",
-        created_at: now, updated_at: now
-      };
-      await this.store.append("automation.decision", { automation });
-      await this.#audit({ tenantId: event.tenant_id, actorId: "system:automation", action: "automation.decision", conversationId, eventId: event.event_id, reason: automation.reason, metadata: { automation_id: automation.automation_id, status: automation.status } });
-      return this.store.getConversation(conversationId);
+      return this.#applyInboundPolicy(event, conversation);
     });
+  }
+
+  async #applyInboundPolicy(event, conversation) {
+    const conversationId = conversation.conversation_id;
+    const now = new Date().toISOString();
+    const text = event.content.type === "text" ? String(event.content.text || "") : "";
+    if (OPTOUT.test(text)) {
+      const request = {
+        suppression_request_id: crypto.randomUUID(), tenant_id: event.tenant_id,
+        channel_identity: event.sender_identity, source: "conversation_opt_out",
+        event_id: event.event_id, conversation_id: conversationId, created_at: now
+      };
+      await this.store.append("suppression.requested", { request });
+      conversation.automation_paused = true;
+      conversation.version += 1;
+      conversation.updated_at = now;
+      await this.store.append("conversation.upsert", { conversation });
+      await this.#cancelPendingAutomation(conversation, "opt_out");
+      await this.#audit({ tenantId: event.tenant_id, actorId: "system:policy", action: "suppression.requested", conversationId, eventId: event.event_id, reason: "customer_opt_out" });
+      return conversation;
+    }
+
+    if (HUMAN.test(text)) {
+      if (!conversation.automation_paused) {
+        conversation = { ...conversation, automation_paused: true, version: conversation.version + 1, updated_at: now };
+        await this.store.append("conversation.upsert", { conversation });
+      }
+      conversation = await this.#ensureState(conversation, "waiting_agent", "customer_requested_human", "system:routing", event.event_id);
+      await this.#cancelPendingAutomation(conversation, "human_handoff");
+      await this.#audit({ tenantId: event.tenant_id, actorId: "system:routing", action: "handoff.requested", conversationId, eventId: event.event_id, reason: "customer_requested_human" });
+      return conversation;
+    }
+
+    const existingAutomation = this.store.listAutomationsForConversation(conversationId).find((item) => item.event_id === event.event_id);
+    const automation = existingAutomation || {
+      automation_id: crypto.randomUUID(), tenant_id: event.tenant_id, conversation_id: conversationId,
+      event_id: event.event_id, conversation_version: conversation.version,
+      status: this.config.aiAutoreply && !conversation.automation_paused ? "pending" : "skipped",
+      action: this.config.aiAutoreply && !conversation.automation_paused ? "draft_response" : "none",
+      confidence: null,
+      reason: this.config.aiAutoreply ? (conversation.automation_paused ? "conversation_paused" : "policy_eligible") : "ai_autoreply_disabled",
+      created_at: now, updated_at: now
+    };
+    if (!existingAutomation) await this.store.append("automation.decision", { automation });
+    await this.#audit({ tenantId: event.tenant_id, actorId: "system:automation", action: "automation.decision", conversationId, eventId: event.event_id, reason: automation.reason, metadata: { automation_id: automation.automation_id, status: automation.status } });
+    return this.store.getConversation(conversationId);
   }
 
   async #transitionObject(conversation, target, { reason, actorId, eventId = null, allowSame = false }) {
@@ -385,7 +401,7 @@ export class ConversationService {
     return this.store.withConversationLock(id, async () => {
       let conversation = this.store.requireConversationTenant(id, identity.tenantId);
       this.#assertVersion(conversation, expected_version);
-      conversation = await this.#ensureState(conversation, "waiting_agent", reason, identity.subject);
+      conversation = await this.#ensureState({ ...conversation, automation_paused: true }, "waiting_agent", reason, identity.subject);
       conversation.assigned_to = requireString(actor_id, "actor_id");
       conversation.assigned_team = team ? requireString(team, "team") : null;
       conversation.automation_paused = true;
@@ -409,7 +425,7 @@ export class ConversationService {
     return this.store.withConversationLock(id, async () => {
       let conversation = this.store.requireConversationTenant(id, identity.tenantId);
       this.#assertVersion(conversation, expectedVersion);
-      conversation = await this.#ensureState(conversation, "escalated", requireString(reason, "reason"), identity.subject);
+      conversation = await this.#ensureState({ ...conversation, automation_paused: true }, "escalated", requireString(reason, "reason"), identity.subject);
       conversation.automation_paused = true;
       conversation.version += 1;
       conversation.updated_at = new Date().toISOString();

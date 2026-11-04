@@ -57,7 +57,7 @@ Opt-out phrases create a durable suppression request and immediately pause W3 au
 
 ## Security
 
-Operator APIs use RS256 JWT verification with issuer/audience checks and Keycloak-style role extraction. Required roles are:
+Operator APIs use RS256 JWT verification with issuer/audience checks and Keycloak-style role extraction. Resource roles are read only from `WHATSAPP_AUTH_CLIENT_ID` (defaults to `WHATSAPP_AUTH_AUDIENCE`); unrelated clients cannot grant WhatsApp privileges. Required roles are:
 
 - `whatsapp_agent`
 - `whatsapp_supervisor`

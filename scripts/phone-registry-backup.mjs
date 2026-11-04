@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import { syncDirectory } from "../src/storage-durability.mjs";
 
 function assertRegistry(text){
  const obj=JSON.parse(text);
@@ -30,9 +31,9 @@ export async function backupPhoneRegistry(src,destination,{name}={}){
  await fs.writeFile(target+".sha256",checksum+"\n",{flag:"wx",mode:0o600});
  const checksumFile=await fs.open(target+".sha256","r+");
  try{await checksumFile.sync();}finally{await checksumFile.close();}
- const folder=await fs.open(destination,"r");
- try{await folder.sync();}finally{await folder.close();}
- return {file:target,checksum,metadata};
+ const directory_synced=await syncDirectory(destination);
+ return {file:target,checksum,metadata,directory_synced,
+   permission_model:process.platform==="win32"?"windows-acl":"posix-mode"};
 }
 export async function verifyPhoneRegistryBackup(file){
  const source=await fs.lstat(file);

@@ -29,6 +29,30 @@ test("registry is private and requires explicit tenant and admin credentials",as
   let res=await fetch(base+route);assert.equal(res.status,401);
  },{});
 });
+
+test("phone readiness does not claim Windows file storage provides directory durability",async()=>{
+ await withApp(async({request})=>{
+  const ready=await request("GET","/internal/v1/whatsapp/phone-readiness");
+  assert.equal(ready.status,200);
+  assert.equal(ready.body.gates.durable_store,process.platform!=="win32");
+ },{file:path.join(os.tmpdir(),"readiness-unused-registry.json")});
+});
+
+test("file fsync failure prevents registry creation and does not replace the snapshot",async(t)=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),"wa-registry-sync-error-"));
+ t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ const file=path.join(dir,"accounts.json");
+ const original=JSON.stringify({schema:1,accounts:[],audit:[]});
+ await fs.writeFile(file,original);
+ const open=fs.open.bind(fs);
+ t.mock.method(fs,"open",async(...args)=>{
+  const handle=await open(...args);
+  if(args[1]==="wx")handle.sync=async()=>{throw Object.assign(new Error("disk write failed"),{code:"EIO"});};
+  return handle;
+ });
+ await assert.rejects(createPhoneStore(file).create(evo,"admin"),e=>e.code==="EIO");
+ assert.equal(await fs.readFile(file,"utf8"),original);
+});
 test("multi-number drafts are durable, tenant scoped and duplicates rejected",async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"codestra-phones-")),file=path.join(dir,"accounts.json");
  try{
@@ -136,4 +160,75 @@ test("Meta ownership verification and registration cannot skip required lifecycl
      {expected_version:1,input:{pin:"123456"}},{"idempotency-key":"transition-register-001"});
   assert.equal(register.status,409);
  },{enabled:true,callEnrollment:async()=>{throw new Error("must not call");}});
+});
+
+test("unknown or malformed status cannot release an uncertain instance creation",async(t)=>{
+ for(const status of [{state:"unknown"},{},null,{state:7}])await t.test(JSON.stringify(status),async()=>{
+  const store=createPhoneStore(":memory:");
+  const account=await store.create(evo,"admin");
+  let effects=0;
+  const create=async()=>{effects++;throw new Error("connection lost after create");};
+  await assert.rejects(store.action(account.id,"TENANT1",1,"uncertain-create-001","create-instance",{},"admin",create,true),
+    e=>e.code==="provider_reconciliation_required");
+  const checked=await store.action(account.id,"TENANT1",1,"unknown-status-00001","status",{},"admin",async()=>status,false);
+  assert.equal(checked.account.state,"draft");
+  assert.equal(checked.account.needs_reconciliation,true);
+  await assert.rejects(store.action(account.id,"TENANT1",checked.account.version,"uncertain-create-001","create-instance",{},"admin",create,true),
+    e=>e.code==="provider_reconciliation_required"&&e.status===423);
+  assert.equal(effects,1);
+ });
+});
+
+test("confirmed instance status reconciles creation and preserves its idempotency",async(t)=>{
+ for(const [state,expected] of [["open","linked"],["close","disconnected"]])await t.test(state,async()=>{
+  const store=createPhoneStore(":memory:");
+  const account=await store.create(evo,"admin");
+  const create=async()=>{throw new Error("connection lost after create");};
+  await assert.rejects(store.action(account.id,"TENANT1",1,"confirmed-create-001","create-instance",{},"admin",create,true));
+  const checked=await store.action(account.id,"TENANT1",1,"confirmed-status-001","status",{},"admin",async()=>({state}),false);
+  assert.equal(checked.account.state,expected);
+  assert.equal(checked.account.needs_reconciliation,false);
+  const retry=await store.action(account.id,"TENANT1",checked.account.version,"confirmed-create-001","create-instance",{},"admin",
+    async()=>assert.fail("reconciled creation must never be repeated"),true);
+  assert.equal(retry.duplicate,true);
+  assert.equal(retry.account.state,expected);
+ });
+});
+
+test("disconnected status does not reconcile uncertain QR issuance, but linked status does",async()=>{
+ const store=createPhoneStore(":memory:");
+ const account=await store.create(evo,"admin");
+ const created=await store.action(account.id,"TENANT1",1,"create-before-qr-001","create-instance",{},"admin",async()=>({created:true}),true);
+ await assert.rejects(store.action(account.id,"TENANT1",created.account.version,"uncertain-qr-000001","qr",{},"admin",
+   async()=>{throw new Error("connection lost after QR issuance");},true));
+ const closed=await store.action(account.id,"TENANT1",created.account.version,"closed-status-00001","status",{},"admin",async()=>({state:"close"}),false);
+ assert.equal(closed.account.needs_reconciliation,true);
+ assert.equal(closed.account.state,"awaiting_qr");
+ const opened=await store.action(account.id,"TENANT1",closed.account.version,"linked-status-00001","status",{},"admin",async()=>({state:"open"}),false);
+ assert.equal(opened.account.state,"linked");
+ assert.equal(opened.account.needs_reconciliation,false);
+ const retry=await store.action(account.id,"TENANT1",opened.account.version,"uncertain-qr-000001","qr",{},"admin",
+   async()=>assert.fail("linked QR action must never be repeated"),true);
+ assert.equal(retry.duplicate,true);
+});
+
+test("uncertain creation and confirmed idempotency survive registry restarts",async(t)=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),"wa-reconciled-restart-"));
+ t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+ const file=path.join(dir,"accounts.json");
+ let store=createPhoneStore(file);
+ const account=await store.create(evo,"admin");
+ await assert.rejects(store.action(account.id,"TENANT1",1,"persisted-create-001","create-instance",{},"admin",
+   async()=>{throw new Error("connection lost after create");},true));
+ store=createPhoneStore(file);
+ const unknown=await store.action(account.id,"TENANT1",1,"persisted-status-001","status",{},"admin",async()=>({state:"unknown"}),false);
+ store=createPhoneStore(file);
+ assert.equal((await store.get(account.id,"TENANT1")).needs_reconciliation,true);
+ const confirmed=await store.action(account.id,"TENANT1",unknown.account.version,"persisted-status-002","status",{},"admin",async()=>({state:"open"}),false);
+ store=createPhoneStore(file);
+ const retry=await store.action(account.id,"TENANT1",confirmed.account.version,"persisted-create-001","create-instance",{},"admin",
+   async()=>assert.fail("reconciled creation must not repeat after restart"),true);
+ assert.equal(retry.duplicate,true);
+ assert.equal(retry.account.needs_reconciliation,false);
+ assert.equal(retry.account.state,"linked");
 });

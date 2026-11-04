@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto, { timingSafeEqual } from "node:crypto";
+import { syncDirectory } from "./storage-durability.mjs";
 
 export class PhoneAccountError extends Error {
  constructor(code,status=400){super(code);this.code=code;this.status=status;}
@@ -59,7 +60,7 @@ export function createPhoneStore(filename,{now=()=>new Date().toISOString()}={})
    await file.writeFile(JSON.stringify(state)+"\n");
    await file.sync();await file.close();file=null;
    await fs.rename(tmp,filename);
-   const folder=await fs.open(dir,"r");try{await folder.sync();}finally{await folder.close();}
+   await syncDirectory(dir);
   }finally{if(file)await file.close();await fs.rm(tmp,{force:true}).catch(()=>{});}
  }
  function sequential(callback){
@@ -151,11 +152,23 @@ export function createPhoneStore(filename,{now=()=>new Date().toISOString()}={})
     const next={"request-code":"code_requested","verify-code":"verified","register":"registered",
       "create-instance":"awaiting_qr","qr":"awaiting_qr"}[action];
     if(next)a.state=next;
-    if(action==="status")a.state=result.state==="open"?"linked":result.state==="close"?"disconnected":a.state;
-    a.pending_effect=null;
     a.idempotency??=[];
+    if(action==="status"){
+      const statusState=result?.state;
+      const confirmed=statusState==="open"||statusState==="close";
+      const pending=a.pending_effect;
+      // A connection status proves that creation completed, but only an open
+      // connection proves that an uncertain QR flow no longer needs recovery.
+      const reconciled=confirmed&&pending&&(
+        pending.action==="create-instance"||(pending.action==="qr"&&statusState==="open"));
+      if(reconciled){
+        a.idempotency.push({fingerprint:pending.fingerprint,action:pending.action,at:now()});
+        a.pending_effect=null;
+      }
+      if(confirmed&&!a.pending_effect)a.state=statusState==="open"?"linked":"disconnected";
+    }else a.pending_effect=null;
     a.idempotency.push({fingerprint,action,at:now()});
-    if(a.idempotency.length>30)a.idempotency.shift();
+    if(a.idempotency.length>30)a.idempotency.splice(0,a.idempotency.length-30);
     record(a,"provider_"+action,actor);await persist();
     return {account:sanitizeAccount(a),result,duplicate:false};
    });

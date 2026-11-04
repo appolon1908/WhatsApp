@@ -90,7 +90,7 @@ export function createApp(config = loadConfig(), dependencies = {}) {
         res.setHeader("cache-control","no-store");
         const gates={
           oidc_required:config.phoneAuthMode==="oidc",
-          durable_store:config.phoneAccountsFile!==":memory:",
+          durable_store:config.phoneAccountsFile!==":memory:"&&process.platform!=="win32",
           backup_certified:config.phoneBackupVerified,
           middleware_command_configured:Boolean(config.middlewareCommandType),
           messaging_off:!config.productionSend&&!config.externalRecipients&&!config.bulkSend&&!config.aiAutoreply,
